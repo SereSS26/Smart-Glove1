@@ -1,0 +1,5 @@
+package ro.manusa.manusa_app
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()

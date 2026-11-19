@@ -1,0 +1,40 @@
+name: manusa_app
+description: "Aplicația mănușii pentru monitorizarea tremorului."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  device_info_plus: ^13.3.0
+  flutter:
+    sdk: flutter
+  flutter_local_notifications: ^23.0.3
+  flutter_reactive_ble: ^5.6.0
+  flutter_riverpod: ^3.5.0
+  intl: ^0.20.3
+  path: ^1.9.1
+  path_provider: ^2.1.6
+  pdf: ^3.13.1
+  permission_handler: ^13.0.2
+  share_plus: ^13.3.1
+  shared_preferences: ^2.5.6
+  sqflite: ^2.4.6
+  wakelock_plus: ^1.8.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.4.7
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: Atkinson
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+        - asset: assets/fonts/AtkinsonHyperlegible-Bold.ttf
+          weight: 700

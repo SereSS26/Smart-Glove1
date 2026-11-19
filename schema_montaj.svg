@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 810" width="920" height="810" font-family="Helvetica, Arial, sans-serif">
+  <rect width="920" height="810" fill="#ffffff"/>
+  <text x="460" y="34" font-size="20" font-weight="bold" text-anchor="middle" fill="#111">Schema montaj: ESP32 + MPU6050 + senzor flex</text>
+
+  <!-- ESP32 -->
+  <rect x="60" y="60" width="200" height="710" rx="10" fill="#eef2f7" stroke="#334" stroke-width="2"/>
+  <text x="160" y="90" font-size="18" font-weight="bold" text-anchor="middle" fill="#111">ESP32</text>
+  <g font-size="14" fill="#111" text-anchor="end">
+    <text x="248" y="115">3V3</text>
+    <text x="248" y="175">GND</text>
+    <text x="248" y="235">GPIO21 (SDA)</text>
+    <text x="248" y="295">GPIO22 (SCL)</text>
+    <text x="248" y="455">GPIO32 (D32)</text>
+  </g>
+  <g fill="#334">
+    <circle cx="260" cy="110" r="4"/><circle cx="260" cy="170" r="4"/><circle cx="260" cy="230" r="4"/>
+    <circle cx="260" cy="290" r="4"/><circle cx="260" cy="450" r="4"/>
+  </g>
+
+  <!-- MPU6050 -->
+  <rect x="660" y="60" width="200" height="300" rx="10" fill="#eef2f7" stroke="#334" stroke-width="2"/>
+  <text x="760" y="90" font-size="18" font-weight="bold" text-anchor="middle" fill="#111">MPU6050</text>
+  <g font-size="14" fill="#111">
+    <text x="672" y="115">VCC</text>
+    <text x="672" y="175">GND</text>
+    <text x="672" y="235">SDA</text>
+    <text x="672" y="295">SCL</text>
+  </g>
+  <text x="760" y="335" font-size="12" text-anchor="middle" fill="#555">AD0, INT, XDA, XCL: nelegate</text>
+  <g fill="#334">
+    <circle cx="660" cy="110" r="4"/><circle cx="660" cy="170" r="4"/><circle cx="660" cy="230" r="4"/><circle cx="660" cy="290" r="4"/>
+  </g>
+
+  <!-- Fire IMU -->
+  <line x1="260" y1="110" x2="660" y2="110" stroke="#d62828" stroke-width="3"/>
+  <line x1="260" y1="170" x2="660" y2="170" stroke="#222" stroke-width="3"/>
+  <line x1="260" y1="230" x2="660" y2="230" stroke="#1d6fd6" stroke-width="3"/>
+  <line x1="260" y1="290" x2="660" y2="290" stroke="#1f9d55" stroke-width="3"/>
+  <g font-size="12" fill="#444" text-anchor="middle">
+    <text x="460" y="102">3.3V</text><text x="460" y="162">masa</text>
+    <text x="460" y="222">date I2C</text><text x="460" y="282">ceas I2C</text>
+  </g>
+
+  <!-- Senzor flex + divizor -->
+  <!-- eticheta 3V3 sus -->
+  <rect x="462" y="360" width="76" height="26" rx="4" fill="#d62828"/>
+  <text x="500" y="378" font-size="14" font-weight="bold" text-anchor="middle" fill="#fff">3V3</text>
+  <line x1="500" y1="386" x2="500" y2="410" stroke="#d62828" stroke-width="3"/>
+
+  <!-- flex -->
+  <rect x="470" y="410" width="60" height="64" rx="6" fill="#fff4d6" stroke="#8a5a00" stroke-width="2"/>
+  <text x="500" y="438" font-size="14" font-weight="bold" text-anchor="middle" fill="#111">FLEX</text>
+  <text x="500" y="458" font-size="12" text-anchor="middle" fill="#444">~30k</text>
+  <line x1="500" y1="474" x2="500" y2="506" stroke="#222" stroke-width="3"/>
+
+  <!-- nod D32 -->
+  <circle cx="500" cy="506" r="7" fill="#ff8c00" stroke="#222" stroke-width="2"/>
+  <line x1="260" y1="450" x2="360" y2="450" stroke="#ff8c00" stroke-width="3"/>
+  <line x1="360" y1="450" x2="360" y2="506" stroke="#ff8c00" stroke-width="3"/>
+  <line x1="360" y1="506" x2="493" y2="506" stroke="#ff8c00" stroke-width="3"/>
+  <text x="352" y="496" font-size="13" font-weight="bold" text-anchor="end" fill="#b35f00">spre D32</text>
+  <text x="520" y="500" font-size="13" font-weight="bold" fill="#b35f00">NOD</text>
+
+  <!-- 4 rezistente 10k in serie -->
+  <line x1="500" y1="513" x2="500" y2="532" stroke="#222" stroke-width="3"/>
+  <g stroke="#222" stroke-width="2" fill="#f4e9d8">
+    <rect x="470" y="532" width="60" height="44" rx="4"/>
+    <rect x="470" y="590" width="60" height="44" rx="4"/>
+    <rect x="470" y="648" width="60" height="44" rx="4"/>
+    <rect x="470" y="706" width="60" height="44" rx="4"/>
+  </g>
+  <g font-size="12" text-anchor="middle" fill="#111">
+    <text x="500" y="559">R1 10k</text><text x="500" y="617">R2 10k</text>
+    <text x="500" y="675">R3 10k</text><text x="500" y="733">R4 10k</text>
+  </g>
+  <g stroke="#222" stroke-width="3">
+    <line x1="500" y1="576" x2="500" y2="590"/><line x1="500" y1="634" x2="500" y2="648"/>
+    <line x1="500" y1="692" x2="500" y2="706"/>
+  </g>
+
+  <!-- GND jos -->
+  <line x1="500" y1="750" x2="500" y2="768" stroke="#222" stroke-width="3"/>
+  <rect x="462" y="768" width="76" height="26" rx="4" fill="#222"/>
+  <text x="500" y="786" font-size="14" font-weight="bold" text-anchor="middle" fill="#fff">GND</text>
+
+  <!-- Explicatii -->
+  <g font-size="14" fill="#111">
+    <text x="580" y="420" font-weight="bold">Divizorul de tensiune</text>
+    <text x="580" y="444" font-size="13">3V3 → flex → NOD → 4 × 10k (40k) → GND</text>
+    <text x="580" y="472" font-size="13">D32 se leaga in NOD, intre flex si rezistente.</text>
+    <text x="580" y="508" font-weight="bold">Ce trebuie sa citesti pe D32</text>
+    <text x="580" y="532" font-size="13">flex drept (~30k):  ~1.4 V</text>
+    <text x="580" y="552" font-size="13">flex indoit (rezistenta mai mare): scade</text>
+    <text x="580" y="588" font-weight="bold">Pe breadboard</text>
+    <text x="580" y="612" font-size="13">Fiecare rezistenta si flexul au picioarele</text>
+    <text x="580" y="632" font-size="13">in randuri diferite. Cele 5 gauri dintr-un</text>
+    <text x="580" y="652" font-size="13">rand sunt legate intre ele.</text>
+    <text x="580" y="688" font-weight="bold">Greseli frecvente</text>
+    <text x="580" y="712" font-size="13">• 3V3 lipsa  → D32 citeste ~0 V</text>
+    <text x="580" y="732" font-size="13">• flex ocolit → D32 citeste ~3.1 V</text>
+  </g>
+</svg>

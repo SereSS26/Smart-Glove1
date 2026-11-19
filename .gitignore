@@ -1,0 +1,14 @@
+# macOS și editoare
+.DS_Store
+.idea/
+.vscode/
+
+# PlatformIO (compilarea firmware-ului)
+.pio/
+.pio.nosync/
+
+# Flutter: legăturile către folderele .nosync (iCloud) și folderele generate
+Aplicatie_Mobile/build
+Aplicatie_Mobile/.dart_tool
+Aplicatie_Mobile/android/.gradle
+*.nosync/
