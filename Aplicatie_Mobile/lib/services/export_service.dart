@@ -59,11 +59,13 @@ class ExportService {
 
   static Future<Uint8List> buildPdf(SessionRecord s, List<SampleRecord> samples, List<EventRecord> events) async {
     // Fontul aplicației, ca diacriticele să apară corect în PDF.
-    final regular = pw.Font.ttf(await rootBundle.load('assets/fonts/AtkinsonHyperlegible-Regular.ttf'));
-    final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/AtkinsonHyperlegible-Bold.ttf'));
-    final accent = PdfColor.fromInt(AppColors.accent.toARGB32());
-    final muted = PdfColor.fromInt(AppColors.textMuted.toARGB32());
-    final alertColor = PdfColor.fromInt(AppColors.recording.toARGB32());
+    final regular = pw.Font.ttf(await rootBundle.load('assets/fonts/AtkinsonHyperlegibleNext-Regular.ttf'));
+    final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/AtkinsonHyperlegibleNext-Bold.ttf'));
+    // Raportul e tipărit pe hârtie albă: folosește mereu paleta deschisă, oricare ar fi tema aplicației.
+    const paper = AppPalette.light;
+    final accent = PdfColor.fromInt(paper.accent.toARGB32());
+    final muted = PdfColor.fromInt(paper.textMuted.toARGB32());
+    final alertColor = PdfColor.fromInt(paper.recording.toARGB32());
 
     final doc = pw.Document(title: 'Raport tremor', author: S.appTitle);
     doc.addPage(

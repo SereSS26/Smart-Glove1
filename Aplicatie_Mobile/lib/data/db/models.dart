@@ -1,4 +1,9 @@
+import 'dart:convert';
+
 import '../../core/contract.dart';
+
+/// Felul sesiunii: înregistrare liberă, evaluarea completă (4 teste) sau un singur test.
+enum SessionKind { free, assessment, test }
 
 /// O sesiune înregistrată.
 class SessionRecord {
@@ -13,6 +18,7 @@ class SessionRecord {
     required this.maxIndex,
     required this.alertCount,
     required this.simulated,
+    this.kind = SessionKind.free,
   });
 
   final int id;
@@ -29,6 +35,7 @@ class SessionRecord {
   final int maxIndex;
   final int alertCount;
   final bool simulated;
+  final SessionKind kind;
 
   Duration get duration => (endedAt ?? DateTime.now()).difference(startedAt);
 
@@ -43,6 +50,7 @@ class SessionRecord {
     maxIndex: r['max_index']! as int,
     alertCount: r['alert_count']! as int,
     simulated: (r['simulated']! as int) == 1,
+    kind: SessionKind.values.asNameMap()[r['kind'] as String? ?? 'free'] ?? SessionKind.free,
   );
 }
 
@@ -98,5 +106,45 @@ class EventRecord {
     at: DateTime.fromMillisecondsSinceEpoch(r['t']! as int),
     kind: EventKind.values.byName(r['kind']! as String),
     text: r['text']! as String,
+  );
+}
+
+/// Rezultatul unui test: [value] e indicele mediu (teste de tremor) sau atingerile pe secundă (tapping).
+class TestResultRecord {
+  const TestResultRecord({
+    required this.test,
+    required this.startedAt,
+    required this.endedAt,
+    required this.value,
+    this.metrics = const {},
+    this.trace = const [],
+  });
+
+  final String test;
+  final DateTime startedAt;
+  final DateTime endedAt;
+  final double value;
+  final Map<String, num> metrics;
+
+  /// Semnalul brut al testului (ex. degetul la 10/s pentru tapping), pentru grafic.
+  final List<num> trace;
+
+  Map<String, Object?> toRow(int sessionId) => {
+    'session_id': sessionId,
+    'test': test,
+    'started_at': startedAt.millisecondsSinceEpoch,
+    'ended_at': endedAt.millisecondsSinceEpoch,
+    'value': value,
+    'metrics': jsonEncode(metrics),
+    'trace': jsonEncode(trace),
+  };
+
+  factory TestResultRecord.fromRow(Map<String, Object?> r) => TestResultRecord(
+    test: r['test']! as String,
+    startedAt: DateTime.fromMillisecondsSinceEpoch(r['started_at']! as int),
+    endedAt: DateTime.fromMillisecondsSinceEpoch(r['ended_at']! as int),
+    value: (r['value']! as num).toDouble(),
+    metrics: (jsonDecode(r['metrics']! as String) as Map<String, dynamic>).map((k, v) => MapEntry(k, v as num)),
+    trace: (jsonDecode(r['trace']! as String) as List<dynamic>).cast<num>(),
   );
 }

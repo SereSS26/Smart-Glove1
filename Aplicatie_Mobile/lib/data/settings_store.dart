@@ -4,13 +4,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// De unde vin datele mănușii.
 enum DataSource {
   /// Mănușă simulată, fără hardware (modul demonstrativ).
-  demo('Simulată'),
+  demo('Demo'),
 
   /// Mănușa legată prin USB la calculator, prin puntea tools/usb_bridge.py.
   usb('USB'),
 
-  /// Mănușa reală, prin Bluetooth.
-  ble('Bluetooth');
+  /// Mănușa reală, prin Bluetooth (ascunsă din alegere: Wi-Fi în loc de Bluetooth).
+  ble('Bluetooth'),
+
+  /// Mănușa reală, prin Wi-Fi: aplicația se leagă direct de serverul mănușii (portul 8765).
+  wifi('Wi-Fi');
+
+  /// Ce apare în alegere, în ordinea din machete.
+  static const visible = [usb, wifi, demo];
 
   const DataSource(this.label);
   final String label;
@@ -27,6 +33,8 @@ class AppSettings {
     this.lastDeviceId,
     this.lastDeviceName,
     this.lastCalibration,
+    this.wifiHost,
+    this.wifiName,
   });
 
   final DataSource source;
@@ -41,6 +49,10 @@ class AppSettings {
   final String? lastDeviceId;
   final String? lastDeviceName;
   final DateTime? lastCalibration;
+
+  /// Adresa mănușii în rețea (ex. 192.168.1.37) și numele ei (ex. Manusa-38E0).
+  final String? wifiHost;
+  final String? wifiName;
 
   /// Datele sunt simulate: sesiunile se marchează și nu se amestecă cu cele reale.
   bool get demoMode => source == DataSource.demo;
@@ -58,6 +70,8 @@ class AppSettings {
     String? lastDeviceId,
     String? lastDeviceName,
     DateTime? lastCalibration,
+    String? wifiHost,
+    String? wifiName,
   }) => AppSettings(
     source: source ?? this.source,
     alertThreshold: alertThreshold ?? this.alertThreshold,
@@ -67,6 +81,8 @@ class AppSettings {
     lastDeviceId: lastDeviceId ?? this.lastDeviceId,
     lastDeviceName: lastDeviceName ?? this.lastDeviceName,
     lastCalibration: lastCalibration ?? this.lastCalibration,
+    wifiHost: wifiHost ?? this.wifiHost,
+    wifiName: wifiName ?? this.wifiName,
   );
 }
 
@@ -79,9 +95,11 @@ class SettingsStore {
     final cal = _prefs.getInt('lastCalibration');
     final sourceIndex = _prefs.getInt('dataSource');
     // Setările vechi aveau doar „demoMode”; până există mănușa, aplicația pornește cu date simulate.
-    final source = sourceIndex != null
+    var source = sourceIndex != null
         ? DataSource.values[sourceIndex.clamp(0, DataSource.values.length - 1)]
-        : ((_prefs.getBool('demoMode') ?? true) ? DataSource.demo : DataSource.ble);
+        : ((_prefs.getBool('demoMode') ?? true) ? DataSource.demo : DataSource.wifi);
+    // Bluetooth nu mai apare în alegere: cine îl avea salvat trece pe Wi-Fi.
+    if (source == DataSource.ble) source = DataSource.wifi;
     return AppSettings(
       source: source,
       alertThreshold: _prefs.getInt('alertThreshold') ?? 60,
@@ -91,6 +109,8 @@ class SettingsStore {
       lastDeviceId: _prefs.getString('lastDeviceId'),
       lastDeviceName: _prefs.getString('lastDeviceName'),
       lastCalibration: cal == null ? null : DateTime.fromMillisecondsSinceEpoch(cal),
+      wifiHost: _prefs.getString('wifiHost'),
+      wifiName: _prefs.getString('wifiName'),
     );
   }
 
@@ -103,5 +123,7 @@ class SettingsStore {
     if (s.lastDeviceId != null) await _prefs.setString('lastDeviceId', s.lastDeviceId!);
     if (s.lastDeviceName != null) await _prefs.setString('lastDeviceName', s.lastDeviceName!);
     if (s.lastCalibration != null) await _prefs.setInt('lastCalibration', s.lastCalibration!.millisecondsSinceEpoch);
+    if (s.wifiHost != null) await _prefs.setString('wifiHost', s.wifiHost!);
+    if (s.wifiName != null) await _prefs.setString('wifiName', s.wifiName!);
   }
 }

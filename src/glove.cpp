@@ -1,14 +1,27 @@
+// Bluetooth e oprit implicit (decizia din 21 nov 2026: Wi-Fi în loc de Bluetooth).
+// Se repornește cu build_flags = -DGLOVE_BLE=1 în platformio.ini, mediul [env:glove].
+#ifndef GLOVE_BLE
+#define GLOVE_BLE 0
+#endif
+
 #include <Arduino.h>
-#include <NimBLEDevice.h>
 #include <Preferences.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>
 #include <Wire.h>
 #include <math.h>
+#if GLOVE_BLE
+#include <NimBLEDevice.h>
+#endif
 
-// Firmware-ul mănușii: citește IMU-ul și senzorii flex și trimite pachetul Live din contractul BLE v1
-// (14 octeți, 10 pe secundă) pe două căi deodată:
+// Firmware-ul mănușii: citește IMU-ul și senzorii flex și trimite pachetul Live din contractul v1
+// (14 octeți, 10 pe secundă) pe mai multe căi deodată:
 //   - USB: linii „P <28 cifre hex>”, citite de tools/usb_bridge.py pe calculator;
-//   - Bluetooth: caracteristica Live (notify), pentru telefon.
-// Comenzile vin pe aceleași căi: USB „C <cod> <valoare>”, Bluetooth caracteristica Control [cod, valoare].
+//   - Wi-Fi: aceleași linii, pe un server TCP la portul 8765 (aplicația se leagă direct de mănușă);
+//     mănușa răspunde la căutare pe UDP 8766 („MANUSA?” → „MANUSA <nume> <ip>”);
+//   - Bluetooth (doar cu GLOVE_BLE=1): caracteristica Live (notify).
+// Comenzile vin pe aceleași căi: „C <cod> <valoare>” (USB și Wi-Fi), caracteristica Control [cod, valoare].
+// Rețeaua Wi-Fi se setează pe USB sau din aplicație: „W <rețea>;<parolă>” (rămâne salvată în mănușă).
 // Pentru monitorul serial merg și tastele o / c / z (mână deschisă / pumn / giroscop).
 //
 // Montaj (ca în combo2.cpp): IMU SDA=21, SCL=22; F1 deget mare = GPIO32, F2 arătător = GPIO33.
@@ -243,7 +256,107 @@ void runCommand(uint8_t code, uint8_t value) {
 volatile bool blePending = false;
 volatile uint8_t bleCode = 0, bleValue = 0;
 
-char lineBuf[32];
+// ---- Wi-Fi ----
+char gloveName[16];
+WiFiServer tcpServer(8765);
+WiFiClient tcpClient;
+WiFiUDP udp;
+bool wifiStarted = false;
+bool wifiAnnounced = false;
+
+void startWifi() {
+  prefs.begin("wifi", true);
+  String ssid = prefs.getString("ssid", "");
+  String pass = prefs.getString("pass", "");
+  prefs.end();
+  if (ssid.length() == 0) {
+    Serial.println("# Wi-Fi: nicio retea salvata. Trimite: W <retea>;<parola>");
+    return;
+  }
+  WiFi.mode(WIFI_STA);
+  WiFi.setHostname(gloveName);
+  WiFi.begin(ssid.c_str(), pass.c_str());
+  wifiStarted = true;
+  wifiAnnounced = false;
+  Serial.printf("# Wi-Fi: ma conectez la %s\n", ssid.c_str());
+}
+
+// „W <rețea>;<parolă>”: salvează rețeaua și se reconectează.
+void saveWifi(const char *arg) {
+  const char *sep = strchr(arg, ';');
+  if (!sep) {
+    Serial.println("# Wi-Fi: format gresit. Scrie: W <retea>;<parola>");
+    return;
+  }
+  String ssid = String(arg).substring(0, sep - arg);
+  ssid.trim();
+  String pass = String(sep + 1);
+  prefs.begin("wifi", false);
+  prefs.putString("ssid", ssid);
+  prefs.putString("pass", pass);
+  prefs.end();
+  Serial.printf("# Wi-Fi: retea salvata (%s)\n", ssid.c_str());
+  WiFi.disconnect(true);
+  delay(100);
+  startWifi();
+}
+
+void handleLine(char *line) {
+  unsigned code = 0, value = 0;
+  if (line[0] == 'C' && sscanf(line + 1, "%u %u", &code, &value) >= 1) runCommand(code, value);
+  if (line[0] == 'W' && line[1] == ' ') saveWifi(line + 2);
+}
+
+char tcpBuf[96];
+int tcpLen = 0;
+
+void loopWifi() {
+  if (!wifiStarted) return;
+  if (WiFi.status() != WL_CONNECTED) {
+    wifiAnnounced = false;
+    return;
+  }
+  if (!wifiAnnounced) {
+    tcpServer.begin();
+    tcpServer.setNoDelay(true);
+    udp.begin(8766);
+    Serial.printf("# Wi-Fi conectat: %s, portul 8765 (%s)\n", WiFi.localIP().toString().c_str(), gloveName);
+    wifiAnnounced = true;
+  }
+  // O singură aplicație odată; una nouă o înlocuiește pe cea veche.
+  WiFiClient incoming = tcpServer.available();
+  if (incoming) {
+    if (tcpClient) tcpClient.stop();
+    tcpClient = incoming;
+    tcpClient.setNoDelay(true);
+    tcpLen = 0;
+    Serial.println("# Wi-Fi: aplicatia s-a conectat");
+  }
+  while (tcpClient && tcpClient.connected() && tcpClient.available()) {
+    char c = tcpClient.read();
+    if (c == '\r') continue;
+    if (c == '\n') {
+      tcpBuf[tcpLen] = 0;
+      handleLine(tcpBuf);
+      tcpLen = 0;
+      continue;
+    }
+    if (tcpLen < (int)sizeof(tcpBuf) - 1) tcpBuf[tcpLen++] = c;
+  }
+  // Căutarea din aplicație: răspunde cu numele și adresa.
+  if (udp.parsePacket() > 0) {
+    char q[16];
+    int n = udp.read(q, sizeof(q) - 1);
+    q[n > 0 ? n : 0] = 0;
+    if (strncmp(q, "MANUSA?", 7) == 0) {
+      udp.beginPacket(udp.remoteIP(), udp.remotePort());
+      udp.printf("MANUSA %s %s", gloveName, WiFi.localIP().toString().c_str());
+      udp.endPacket();
+    }
+  }
+}
+
+char lineBuf[96];
 int lineLen = 0;
 
 void handleSerial() {
@@ -257,8 +370,7 @@ void handleSerial() {
     if (c == '\r') continue;
     if (c == '\n') {
       lineBuf[lineLen] = 0;
-      unsigned code = 0, value = 0;
-      if (lineBuf[0] == 'C' && sscanf(lineBuf + 1, "%u %u", &code, &value) >= 1) runCommand(code, value);
+      handleLine(lineBuf);
       lineLen = 0;
       continue;
     }
@@ -266,7 +378,8 @@ void handleSerial() {
   }
 }
 
-// ---- Bluetooth ----
+// ---- Bluetooth (doar cu GLOVE_BLE=1) ----
+#if GLOVE_BLE
 NimBLECharacteristic *liveChr = nullptr;
 bool bleConnected = false;
 
@@ -293,9 +406,7 @@ class ControlCallbacks : public NimBLECharacteristicCallbacks {
 };
 
 void setupBle() {
-  uint64_t mac = ESP.getEfuseMac();
-  char name[16];
-  snprintf(name, sizeof(name), "Manusa-%02X%02X", (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
+  const char *name = gloveName;
   NimBLEDevice::init(name);
   NimBLEServer *server = NimBLEDevice::createServer();
   server->setCallbacks(new ServerCallbacks());
@@ -311,6 +422,7 @@ void setupBle() {
   adv->start();
   Serial.printf("# Bluetooth: se anunta ca %s\n", name);
 }
+#endif
 
 // ---- Pachetul Live ----
 void buildPacket(uint8_t out[14], const uint8_t fingers[N_FLEX], uint8_t index) {
@@ -351,7 +463,12 @@ void setup() {
   delay(100);
 
   calibrateGyro();
+  uint64_t mac = ESP.getEfuseMac();
+  snprintf(gloveName, sizeof(gloveName), "Manusa-%02X%02X", (uint8_t)(mac >> 32), (uint8_t)(mac >> 40));
+#if GLOVE_BLE
   setupBle();
+#endif
+  startWifi();
   Serial.println("# Gata. Pachetele Live: linii \"P <hex>\". Taste: o = mana deschisa, c = pumn, z = giroscop");
 }
 
@@ -361,10 +478,13 @@ uint32_t tick = 0;
 void loop() {
   if (nextUs == 0) nextUs = micros() + PERIOD_US;
   handleSerial();
+  loopWifi();
+#if GLOVE_BLE
   if (blePending) {
     blePending = false;
     runCommand(bleCode, bleValue);
   }
+#endif
   if (ledOffAt && millis() > ledOffAt) {
     digitalWrite(LED_PIN, LOW);
     ledOffAt = 0;
@@ -425,8 +545,11 @@ void loop() {
   char hex[2 * 14 + 1];
   for (int i = 0; i < 14; i++) sprintf(hex + 2 * i, "%02x", packet[i]);
   Serial.printf("P %s\n", hex);
+  if (tcpClient && tcpClient.connected()) tcpClient.printf("P %s\n", hex);
+#if GLOVE_BLE
   if (bleConnected && liveChr) {
     liveChr->setValue(packet, sizeof(packet));
     liveChr->notify();
   }
+#endif
 }

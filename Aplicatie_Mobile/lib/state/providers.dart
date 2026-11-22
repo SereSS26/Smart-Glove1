@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../auth/auth.dart';
 import '../core/contract.dart';
 import '../core/glove_source.dart';
 import '../core/live_packet.dart';
@@ -24,6 +25,27 @@ final notificationsProvider = Provider<NotificationService>((_) => NotificationS
 
 final bleProvider = Provider<FlutterReactiveBle>((_) => FlutterReactiveBle());
 final scannerProvider = Provider<GloveScanner>((ref) => GloveScanner(ref.watch(bleProvider)));
+
+// ---- Cont ----
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) => HardcodedAuth(ref.watch(prefsProvider)));
+
+/// Contul autentificat; null = ecranul de autentificare.
+class AuthNotifier extends Notifier<AppUser?> {
+  @override
+  AppUser? build() => ref.watch(authRepositoryProvider).restore();
+
+  Future<void> signIn(String email, String password, {bool remember = true}) async {
+    state = await ref.read(authRepositoryProvider).signIn(email, password, remember: remember);
+  }
+
+  Future<void> signOut() async {
+    await ref.read(authRepositoryProvider).signOut();
+    state = null;
+  }
+}
+
+final authProvider = NotifierProvider<AuthNotifier, AppUser?>(AuthNotifier.new);
 
 // ---- Setări ----
 
@@ -50,17 +72,23 @@ final settingsProvider = NotifierProvider<SettingsNotifier, AppSettings>(Setting
 /// Când se schimbă sursa, cea veche se închide și se creează una nouă.
 final gloveSourceProvider = Provider<GloveSource>((ref) {
   final kind = ref.watch(settingsProvider.select((s) => s.source));
+  // Pe Wi-Fi, alegerea altei mănuși din rețea pornește o legătură nouă.
+  ref.watch(settingsProvider.select((s) => s.source == DataSource.wifi ? s.wifiHost : null));
   final settings = ref.read(settingsProvider);
   final GloveSource source = switch (kind) {
     DataSource.demo => SimulatedGlove(),
     DataSource.usb => UsbGlove(),
     DataSource.ble => BleGlove(ref.read(bleProvider)),
+    DataSource.wifi => UsbGlove.wifi(settings.wifiHost ?? '', name: settings.wifiName),
   };
   ref.onDispose(source.dispose);
   switch (kind) {
     case DataSource.demo:
     case DataSource.usb:
       source.connect(kind.name);
+    case DataSource.wifi:
+      // Se leagă singură de mănușa găsită ultima dată în rețea.
+      if (settings.wifiHost != null) source.connect(settings.wifiHost!);
     case DataSource.ble:
       // Se reconectează singură la ultima mănușă folosită.
       if (settings.lastDeviceId != null) source.connect(settings.lastDeviceId!, name: settings.lastDeviceName);
@@ -72,7 +100,7 @@ final connectionProvider = StreamProvider<GloveConnection>((ref) => ref.watch(gl
 
 /// Ce arată ecranul Live: ultimul pachet, dacă datele sunt vechi și ultimele 30 s de indice.
 class LiveState {
-  const LiveState({this.packet, this.receivedAt, this.stale = true, this.history = const []});
+  const LiveState({this.packet, this.receivedAt, this.stale = true, this.history = const [], this.fingerHistory = const []});
 
   final LivePacket? packet;
   final DateTime? receivedAt;
@@ -80,6 +108,9 @@ class LiveState {
   /// Adevărat dacă n-a venit niciun pachet în ultimele 2 secunde: valorile nu se arată ca live.
   final bool stale;
   final List<double> history;
+
+  /// Ultimele 30 s ale degetelor, câte o listă pe pachet (null = deget necalibrat).
+  final List<List<int?>> fingerHistory;
 
   static const historyLength = 30 * GloveContract.packetsPerSecond;
   static const staleAfter = Duration(seconds: 2);
@@ -101,13 +132,15 @@ class LiveNotifier extends Notifier<LiveState> {
   void _onPacket(LivePacket p) {
     final history = [...state.history, p.tremorIndex.toDouble()];
     if (history.length > LiveState.historyLength) history.removeRange(0, history.length - LiveState.historyLength);
-    state = LiveState(packet: p, receivedAt: DateTime.now(), stale: false, history: history);
+    final fingers = [...state.fingerHistory, p.fingers];
+    if (fingers.length > LiveState.historyLength) fingers.removeRange(0, fingers.length - LiveState.historyLength);
+    state = LiveState(packet: p, receivedAt: DateTime.now(), stale: false, history: history, fingerHistory: fingers);
   }
 
   void _checkStale() {
     final at = state.receivedAt;
     if (!state.stale && at != null && DateTime.now().difference(at) > LiveState.staleAfter) {
-      state = LiveState(packet: state.packet, receivedAt: at, stale: true, history: state.history);
+      state = LiveState(packet: state.packet, receivedAt: at, stale: true, history: state.history, fingerHistory: state.fingerHistory);
     }
   }
 }
@@ -119,7 +152,7 @@ final liveProvider = NotifierProvider<LiveNotifier, LiveState>(LiveNotifier.new)
 /// Sesiunile încheiate: în modul demonstrativ doar cele simulate, altfel doar cele reale.
 final historyProvider = FutureProvider<List<SessionRecord>>((ref) {
   final demo = ref.watch(settingsProvider.select((s) => s.demoMode));
-  return ref.watch(databaseProvider).sessions(simulated: demo);
+  return ref.watch(databaseProvider).sessions(simulated: demo, limit: 1000);
 });
 
 // ---- Sesiunea în curs ----

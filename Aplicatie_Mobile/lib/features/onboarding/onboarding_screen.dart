@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../data/settings_store.dart';
 import '../../state/providers.dart';
+import '../../ui/ui.dart';
 import '../calibrate/calibrate_screen.dart';
 import '../connect/connect_screen.dart';
 
@@ -51,25 +53,29 @@ class OnboardingScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(AppSizes.pagePadding, 28, AppSizes.pagePadding, 24),
           children: [
-            Icon(Icons.back_hand_outlined, size: 72, color: AppColors.accent),
-            const SizedBox(height: 14),
+            const Center(child: AppMark(size: 92)),
+            const SizedBox(height: 18),
             Text(S.welcomeTitle, textAlign: TextAlign.center, style: Theme.of(context).textTheme.headlineMedium),
             const SizedBox(height: 10),
             const Text(S.welcomeBody, textAlign: TextAlign.center, style: TextStyle(fontSize: 19, height: 1.4)),
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: AppColors.warningBg, borderRadius: BorderRadius.circular(AppSizes.radius)),
+              decoration: BoxDecoration(
+                color: AppColors.warningBg,
+                borderRadius: BorderRadius.circular(AppSizes.radius),
+                border: Border.all(color: AppColors.warningBorder),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info_outline, color: AppColors.warningFg),
+                      Icon(Symbols.info_rounded, color: AppColors.warningFg),
                       SizedBox(width: 10),
                       Text(
                         S.disclaimerTitle,
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.warningFg),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.warningFg),
                       ),
                     ],
                   ),
@@ -81,9 +87,9 @@ class OnboardingScreen extends ConsumerWidget {
             const SizedBox(height: 12),
             Text(S.dataStaysLocal, style: TextStyle(fontSize: 17, color: AppColors.textMuted)),
             const SizedBox(height: 24),
-            FilledButton(onPressed: () => start(demo: false), child: const Text(S.haveGlove)),
+            GradientButton(label: S.haveGlove, icon: Symbols.back_hand_rounded, onPressed: () => start(demo: false)),
             const SizedBox(height: 10),
-            OutlineBigButton(icon: Icons.science_outlined, title: S.tryDemo, centered: true, onPressed: () => start(demo: true)),
+            OutlineBigButton(icon: Symbols.auto_awesome_rounded, title: S.tryDemo, centered: true, onPressed: () => start(demo: true)),
           ],
         ),
       ),

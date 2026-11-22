@@ -12,10 +12,14 @@ import '../core/live_packet.dart';
 /// Protocol (text, câte o linie): mănușa → aplicație `P <28 cifre hex>` = pachetul Live;
 /// aplicație → mănușă `C <cod> <valoare>`.
 class UsbGlove implements GloveSource {
-  UsbGlove({this.host = '127.0.0.1', this.port = 8765});
+  UsbGlove({this.host = '127.0.0.1', this.port = 8765, this.label = 'Mănușă prin USB'});
+
+  /// Aceeași legătură merge și prin Wi-Fi: mănușa are un server cu același protocol.
+  factory UsbGlove.wifi(String host, {String? name}) => UsbGlove(host: host, label: '${name ?? 'Mănușa'} · Wi-Fi');
 
   final String host;
   final int port;
+  final String label;
 
   static const _retryDelay = Duration(seconds: 2);
 
@@ -41,7 +45,7 @@ class UsbGlove implements GloveSource {
   Stream<LivePacket> get packets => _packets.stream;
 
   @override
-  String? get deviceName => 'Mănușă prin USB';
+  String? get deviceName => label;
 
   @override
   bool get isSimulated => false;
@@ -121,6 +125,15 @@ class UsbGlove implements GloveSource {
     if (socket == null) return;
     socket.write('C ${command.code} ${value.clamp(0, 255)}\n');
     await socket.flush();
+  }
+
+  /// Trimite o linie de text mănușii (ex. `W rețea;parolă` pentru Wi-Fi). Întoarce false dacă nu e legată.
+  Future<bool> sendLine(String line) async {
+    final socket = _socket;
+    if (socket == null) return false;
+    socket.write('${line.trim()}\n');
+    await socket.flush();
+    return true;
   }
 
   @override

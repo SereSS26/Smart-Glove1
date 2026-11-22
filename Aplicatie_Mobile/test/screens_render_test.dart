@@ -12,19 +12,33 @@ import 'package:manusa_app/state/providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+/// Lasă interogările bazei (care rulează în timp real, nu în timpul simulat al testului) să se termine.
+Future<void> settleDb(WidgetTester tester) async {
+  for (var i = 0; i < 5; i++) {
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+}
+
 /// Ecranul principal se desenează fără erori pe ambele teme și cu textul mărit la 130 %.
 void main() {
   setUpAll(() async {
     sqfliteFfiInit();
     // Fontul real al aplicației; fără el, testul folosește un font de test mai lat și raportează depășiri false.
-    final loader = FontLoader('Atkinson')
-      ..addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegible-Regular.ttf'))
-      ..addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegible-Bold.ttf'));
+    final loader = FontLoader('Atkinson');
+    for (final w in ['Regular', 'Medium', 'Bold', 'ExtraBold']) {
+      loader.addFont(rootBundle.load('assets/fonts/AtkinsonHyperlegibleNext-$w.ttf'));
+    }
     await loader.load();
   });
 
   Future<void> pumpApp(WidgetTester tester, {required Brightness brightness, double textScale = 1}) async {
-    SharedPreferences.setMockInitialValues({'dataSource': 0, 'onboardingDone': true, 'themeMode': brightness == Brightness.dark ? 2 : 1});
+    SharedPreferences.setMockInitialValues({
+      'dataSource': 0,
+      'onboardingDone': true,
+      'authUserId': 'p-ion',
+      'themeMode': brightness == Brightness.dark ? 2 : 1,
+    });
     final prefs = await SharedPreferences.getInstance();
     final db = await tester.runAsync(() => AppDatabase.open(inMemoryDatabasePath, factory: databaseFactoryFfi));
     tester.view.physicalSize = const Size(1080, 2400);
@@ -40,18 +54,20 @@ void main() {
     // Simulatorul se conectează în 0,4 s, apoi trimite pachete.
     await tester.pump(const Duration(seconds: 1));
     await tester.pump(const Duration(seconds: 1));
+    await settleDb(tester);
   }
 
   for (final b in Brightness.values) {
     testWidgets('Live se desenează pe tema ${b.name}', (tester) async {
       await pumpApp(tester, brightness: b);
       expect(tester.takeException(), isNull);
-      expect(find.text('Pornește sesiunea'), findsOneWidget);
+      expect(find.text('Pornește o sesiune'), findsOneWidget);
       expect(find.text('Degete'.toUpperCase()), findsOneWidget);
       expect(Theme.of(tester.element(find.byType(Scaffold).first)).brightness, b);
       expect(AppColors.background, b == Brightness.dark ? AppPalette.dark.background : AppPalette.light.background);
       await tester.tap(find.text('Istoric').last);
       await tester.pump(const Duration(milliseconds: 500));
+      await settleDb(tester);
       expect(tester.takeException(), isNull);
     });
   }
@@ -59,7 +75,7 @@ void main() {
   testWidgets('Live cu text mărit la 130 % nu are erori de așezare', (tester) async {
     await pumpApp(tester, brightness: Brightness.light, textScale: 1.3);
     expect(tester.takeException(), isNull);
-    expect(find.text('Pornește sesiunea'), findsOneWidget);
+    expect(find.text('Pornește o sesiune'), findsOneWidget);
   });
 
   // Fiecare ecran, deschis peste cel principal, pe ambele teme și cu text mărit.
@@ -73,7 +89,7 @@ void main() {
     for (final scale in [1.0, 1.3]) {
       testWidgets('toate ecranele se desenează (${b.name}, text ${(scale * 100).round()} %)', (tester) async {
         await pumpApp(tester, brightness: b, textScale: scale);
-        for (final tab in ['Istoric', 'Setări', 'Live']) {
+        for (final tab in ['Istoric', 'Remindere', 'Setări', 'Live']) {
           await tester.tap(find.text(tab).last);
           await tester.pump(const Duration(milliseconds: 300));
           expect(tester.takeException(), isNull, reason: tab);
@@ -87,9 +103,16 @@ void main() {
           await tester.pump(const Duration(milliseconds: 600));
         }
         // Sesiunea: pornită din Live.
-        await tester.ensureVisible(find.text('Pornește sesiunea'));
+        await tester.ensureVisible(find.text('Pornește o sesiune'));
         await tester.pump();
-        await tester.tap(find.text('Pornește sesiunea'));
+        await tester.tap(find.text('Pornește o sesiune'));
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text('Ce verificăm azi?'), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: 'Alegerea testului');
+        await tester.scrollUntilVisible(find.text('Înregistrare liberă'), 200, scrollable: find.byType(Scrollable).last);
+        await tester.pump();
+        await tester.tap(find.text('Înregistrare liberă'));
         // Baza de date lucrează asincron real; îi lăsăm timp în afara ceasului simulat.
         for (var i = 0; i < 15 && find.text('Oprește sesiunea').evaluate().isEmpty; i++) {
           await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
@@ -102,7 +125,7 @@ void main() {
   }
 
   testWidgets('prima pornire se desenează cu text mărit', (tester) async {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'authUserId': 'p-ion'});
     final prefs = await SharedPreferences.getInstance();
     final db = await tester.runAsync(() => AppDatabase.open(inMemoryDatabasePath, factory: databaseFactoryFfi));
     tester.view.physicalSize = const Size(1080, 2400);

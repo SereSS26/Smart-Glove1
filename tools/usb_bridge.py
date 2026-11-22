@@ -99,9 +99,11 @@ class Bridge:
             buf += data
             while b"\n" in buf:
                 line, buf = buf.split(b"\n", 1)
-                if line.startswith(b"C ") and self.ser is not None:
+                if (line.startswith(b"C ") or line.startswith(b"W ")) and self.ser is not None:
                     self.ser.write(line + b"\n")
-                    print("  comandă către mănușă:", line.decode())
+                    # Parola Wi-Fi nu se afișează în terminal.
+                    shown = line.split(b";")[0] + b";***" if line.startswith(b"W ") else line
+                    print("  comandă către mănușă:", shown.decode(errors="replace"))
         with self.lock:
             if self.client is conn:
                 self.client = None

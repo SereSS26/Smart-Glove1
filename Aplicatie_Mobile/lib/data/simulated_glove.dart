@@ -4,6 +4,7 @@ import 'dart:math';
 import '../core/contract.dart';
 import '../core/glove_source.dart';
 import '../core/live_packet.dart';
+import '../core/tests.dart';
 
 /// O fază din scenariul simulat: cât durează și cum arată tremorul în ea.
 class _Phase {
@@ -45,6 +46,24 @@ class SimulatedGlove implements GloveSource {
   bool _openCalibrated = false;
   double _index = 18;
   double _frequency = 0;
+
+  TestKind? _test;
+  int _testStart = 0;
+
+  /// În timpul unui test ghidat, mănușa simulată se poartă ca o mână reală la testul acela:
+  /// la postural tremorul e mai mare, la tapping degetele se închid de ~3 ori pe secundă și obosesc spre final.
+  void setTest(TestKind? test) {
+    _test = test;
+    _testStart = _ticks;
+  }
+
+  static const _testPhases = {
+    TestKind.rest: _Phase(1, 41, 4.8, HandState.rest),
+    TestKind.postural: _Phase(1, 54, 5.1, HandState.posture),
+    TestKind.kinetic: _Phase(1, 47, 4.6, HandState.action),
+    TestKind.tappingGlove: _Phase(1, 24, 0, HandState.action),
+    TestKind.tappingScreen: _Phase(1, 30, 4.7, HandState.rest),
+  };
 
   @override
   Stream<GloveConnection> get connection async* {
@@ -124,7 +143,7 @@ class SimulatedGlove implements GloveSource {
     _ticks++;
     // Timpul scenariului avansează 0,1 s pe pachet, indiferent de [tick] (testele îl accelerează).
     final seconds = _ticks / GloveContract.packetsPerSecond;
-    final phase = _phaseAt(seconds);
+    final phase = _test == null ? _phaseAt(seconds) : _testPhases[_test]!;
 
     // Valorile se apropie lin de ținta fazei, cu puțin zgomot, ca la o măsurătoare reală.
     _index += (phase.index - _index) * 0.04 + (_random.nextDouble() - 0.5) * 2.4;
@@ -133,9 +152,19 @@ class SimulatedGlove implements GloveSource {
     _frequency = phase.frequency == 0 ? 0 : (_frequency == 0 ? targetFreq : _frequency + (targetFreq - _frequency) * 0.1);
 
     final flexOk = _flags & GloveFlags.flexCalibrated != 0;
+    final tapping = _test == TestKind.tappingGlove;
+    final t = (_ticks - _testStart) / GloveContract.packetsPerSecond;
+    // Tapping: ~3 atingeri pe secundă, amplitudinea scade ușor (oboseală).
+    final tapAmp = 42 * (1 - 0.012 * t);
     final fingers = <int?>[
       for (var i = 0; i < GloveContract.fingerCount; i++)
-        flexOk ? (40 + 35 * sin(seconds * 0.35 + i * 0.9) + (_random.nextDouble() - 0.5) * 3).round().clamp(0, 100) : null,
+        !flexOk
+            ? null
+            : (tapping && i < 2
+                      ? 48 + tapAmp * sin(2 * pi * 3.1 * t + (i == 0 ? 0.4 : 0)) + (_random.nextDouble() - 0.5) * 4
+                      : 40 + 35 * sin(seconds * 0.35 + i * 0.9) + (_random.nextDouble() - 0.5) * 3)
+                  .round()
+                  .clamp(0, 100),
     ];
 
     final packet = LivePacket(

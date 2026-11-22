@@ -1,0 +1,10 @@
+# Iconița aplicației. Imaginile din assets/brand se generează cu: flutter test tool/brand_assets_test.dart
+# Apoi: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/brand/icon.png"
+  adaptive_icon_background: "assets/brand/icon_background.png"
+  adaptive_icon_foreground: "assets/brand/icon_foreground.png"
+  adaptive_icon_monochrome: "assets/brand/icon_foreground.png"

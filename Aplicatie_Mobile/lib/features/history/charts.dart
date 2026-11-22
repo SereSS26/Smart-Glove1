@@ -4,10 +4,13 @@ import '../../core/theme.dart';
 
 /// O bară din graficul Istoric; [value] null = nicio sesiune în acea zi/oră.
 class BarDatum {
-  const BarDatum(this.label, this.value, {this.highlight = false});
+  const BarDatum(this.label, this.value, {this.highlight = false, this.dose = false});
   final String label;
   final double? value;
   final bool highlight;
+
+  /// O doză luată în acel interval: o mică pastilă sub bară.
+  final bool dose;
 }
 
 /// Grafic cu bare (0–100) și linia punctată a pragului de alertă.
@@ -51,7 +54,7 @@ class _BarPainter extends CustomPainter {
           fontFamily: 'Atkinson',
           fontSize: size,
           color: color ?? AppColors.textMuted,
-          fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+          fontWeight: bold ? FontWeight.w800 : FontWeight.w400,
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -88,13 +91,12 @@ class _BarPainter extends CustomPainter {
     for (var x = _left; x < size.width; x += 10) {
       canvas.drawLine(Offset(x, ty), Offset((x + 5).clamp(0, size.width), ty), dash);
     }
-    _text(canvas, '$threshold', Offset(_left - 8, ty), color: AppColors.recordingText, bold: true, align: TextAlign.right);
-    _text(canvas, 'prag $threshold', Offset(size.width, ty - 12), color: AppColors.recordingText, bold: true, align: TextAlign.right);
+    _text(canvas, 'prag $threshold', Offset(size.width, ty - 12), size: 13, color: AppColors.recording, bold: true, align: TextAlign.right);
 
     if (bars.isEmpty) return;
     final slot = plotW / bars.length;
     final barW = (slot * 0.6).clamp(6.0, 28.0);
-    final labelEvery = bars.length > 12 ? (bars.length / 8).ceil() : 1;
+    const labelEvery = 1; // etichetele vin deja rărite (ore din 3 în 3, zile din 5 în 5)
     for (var i = 0; i < bars.length; i++) {
       final b = bars[i];
       final cx = _left + slot * i + slot / 2;
@@ -109,16 +111,32 @@ class _BarPainter extends CustomPainter {
         );
       } else {
         final rect = RRect.fromRectAndRadius(Rect.fromLTRB(cx - barW / 2, y(b.value!), cx + barW / 2, bottom), const Radius.circular(6));
-        canvas.drawRRect(rect, Paint()..color = b.highlight ? AppColors.accent : const Color(0xFF7FB3C8));
+        final over = b.value! > threshold;
+        final color = over ? AppColors.bad : AppColors.accent;
+        canvas.drawRRect(rect, Paint()..color = b.highlight ? color : color.withValues(alpha: 0.75));
         if (bars.length <= 12) {
-          _text(canvas, b.value!.round().toString(), Offset(cx, y(b.value!) - 11), size: 15, color: AppColors.text, bold: true);
+          _text(
+            canvas,
+            b.value!.round().toString(),
+            Offset(cx, y(b.value!) - 11),
+            size: 14,
+            color: over ? AppColors.recording : AppColors.text,
+            bold: true,
+          );
         }
+      }
+      if (b.dose) {
+        final pill = RRect.fromRectAndRadius(
+          Rect.fromCenter(center: Offset(cx, bottom + 4), width: 12, height: 6),
+          const Radius.circular(3),
+        );
+        canvas.drawRRect(pill, Paint()..color = AppColors.accentDark);
       }
       if (i % labelEvery == 0) {
         _text(
           canvas,
           b.label,
-          Offset(cx, bottom + 14),
+          Offset(cx, bottom + 18),
           size: 15,
           color: b.highlight ? AppColors.text : AppColors.textMuted,
           bold: b.highlight,
@@ -184,13 +202,21 @@ class _SessionPainter extends CustomPainter {
         ..lineTo(pts.last.dx, bottom)
         ..lineTo(0, bottom)
         ..close();
-      canvas.drawPath(area, Paint()..color = AppColors.accentSoft);
+      canvas.drawPath(
+        area,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.accent.withValues(alpha: 0.22), AppColors.accent.withValues(alpha: 0.02)],
+          ).createShader(Rect.fromLTRB(0, top, size.width, bottom)),
+      );
       canvas.drawPath(
         line,
         Paint()
           ..color = AppColors.accent
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
+          ..strokeWidth = 2.6
           ..strokeJoin = StrokeJoin.round,
       );
     }

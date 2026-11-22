@@ -5,6 +5,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/glove_source.dart';
@@ -14,7 +15,9 @@ import '../../core/widgets.dart';
 import '../../data/ble_glove.dart';
 import '../../data/settings_store.dart';
 import '../../state/providers.dart';
+import '../../ui/ui.dart';
 import 'source_picker.dart';
+import 'wifi_panel.dart';
 
 /// Căutarea și conectarea mănușii; tot aici se pornește modul demonstrativ.
 /// [onContinue] e folosit la prima pornire, ca să treacă la calibrare.
@@ -142,13 +145,18 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
             const SizedBox(height: 14),
             AppCard(child: SourcePicker(onChanged: _onSourceChanged)),
             const SizedBox(height: 14),
-            if (connection == GloveConnection.connected || kind != DataSource.usb) ...[
+            if (connection == GloveConnection.connected || (kind != DataSource.usb && kind != DataSource.wifi)) ...[
               if (connection != GloveConnection.disconnected) ...[
                 _CurrentGlove(name: source.deviceName ?? '', connection: connection, simulated: source.isSimulated),
                 const SizedBox(height: 14),
               ],
             ],
-            if (kind == DataSource.usb) ...[_UsbHelp(connected: connection == GloveConnection.connected), const SizedBox(height: 14)],
+            if (kind == DataSource.usb) ...[
+              _UsbHelp(connected: connection == GloveConnection.connected),
+              const SizedBox(height: 14),
+              if (connection == GloveConnection.connected) ...[const WifiSetupCard(), const SizedBox(height: 14)],
+            ],
+            if (kind == DataSource.wifi) ...[const WifiPanel(), const SizedBox(height: 14)],
             if (kind == DataSource.ble) ...[
               _StatusBox(ok: problem == null, text: problem ?? (_asking ? S.checkingBluetooth : (_scanning ? S.searching : S.bluetoothOn))),
               const SizedBox(height: 14),
@@ -160,7 +168,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
                 for (final g in _found.values) ...[_FoundTile(glove: g, onConnect: () => _connect(g)), const SizedBox(height: 10)],
               const SizedBox(height: 4),
               OutlineBigButton(
-                icon: Icons.refresh_rounded,
+                icon: Symbols.refresh_rounded,
                 title: S.searchAgain,
                 centered: true,
                 onPressed: problem == null && !_scanning ? _startScan : null,
@@ -171,10 +179,7 @@ class _ConnectScreenState extends ConsumerState<ConnectScreen> {
             ],
             if (widget.onContinue != null) ...[
               const SizedBox(height: 20),
-              FilledButton(
-                onPressed: connection == GloveConnection.connected ? widget.onContinue : null,
-                child: const Text(S.continueLabel),
-              ),
+              GradientButton(label: S.continueLabel, onPressed: connection == GloveConnection.connected ? widget.onContinue : null),
             ],
           ],
         ),
@@ -196,13 +201,18 @@ class _CurrentGlove extends StatelessWidget {
     return AppCard(
       child: Row(
         children: [
-          Icon(connected ? Icons.check_circle : Icons.sync, color: connected ? AppColors.connected : AppColors.amber, size: 30),
+          Icon(
+            connected ? Symbols.check_circle_rounded : Symbols.sync_rounded,
+            fill: 1,
+            color: connected ? AppColors.connected : AppColors.amber,
+            size: 30,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700)),
+                Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                 Text(
                   connected ? (simulated ? 'conectată · date simulate' : 'conectată') : S.gloveConnecting,
                   style: TextStyle(fontSize: 16, color: AppColors.textMuted),
@@ -227,10 +237,18 @@ class _StatusBox extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(minHeight: 64),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-      decoration: BoxDecoration(color: ok ? AppColors.accentSoft : AppColors.warningBg, borderRadius: BorderRadius.circular(18)),
+      decoration: BoxDecoration(
+        color: ok ? AppColors.accentSoft : AppColors.warningBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: ok ? AppColors.accentSoft : AppColors.warningBorder),
+      ),
       child: Row(
         children: [
-          Icon(ok ? Icons.bluetooth : Icons.bluetooth_disabled, color: ok ? AppColors.accentDark : AppColors.warningFg, size: 26),
+          Icon(
+            ok ? Symbols.bluetooth_rounded : Symbols.bluetooth_disabled_rounded,
+            color: ok ? AppColors.accentDark : AppColors.warningFg,
+            size: 26,
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
@@ -260,7 +278,7 @@ class _FoundTile extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text(glove.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                child: Text(glove.name, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
               ),
               Semantics(
                 label: 'Semnal: $bars din 3',
@@ -283,7 +301,7 @@ class _FoundTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          FilledButton(onPressed: onConnect, child: const Text(S.connect)),
+          GradientButton(label: S.connect, onPressed: onConnect),
         ],
       ),
     );
@@ -304,10 +322,14 @@ class _UsbHelp extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(connected ? Icons.usb_rounded : Icons.sync, color: connected ? AppColors.connected : AppColors.amber, size: 28),
+              Icon(
+                connected ? Symbols.usb_rounded : Symbols.sync_rounded,
+                color: connected ? AppColors.connected : AppColors.amber,
+                size: 28,
+              ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(connected ? S.usbConnected : S.usbWaiting, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
+                child: Text(connected ? S.usbConnected : S.usbWaiting, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               ),
             ],
           ),
@@ -321,7 +343,11 @@ class _UsbHelp extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: AppColors.track, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceRaised,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
               child: SelectableText(S.usbCommand, style: const TextStyle(fontFamily: 'monospace', fontSize: 14)),
             ),
           ],

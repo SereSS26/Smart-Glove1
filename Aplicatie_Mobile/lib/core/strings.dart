@@ -1,21 +1,30 @@
 /// Toate textele aplicației, într-un singur loc.
 abstract final class S {
   static const appTitle = 'Mănușa';
+  static const tagline = 'Tremorul tău, urmărit cu grijă';
 
   static const tabLive = 'Live';
   static const tabHistory = 'Istoric';
   static const tabSettings = 'Setări';
+  static const tabReminders = 'Remindere';
+  static const tabPatients = 'Pacienți';
+  static const tabReports = 'Rapoarte';
+  static const logout = 'Ieși din cont';
+  static const logoutConfirm = 'Ieși din cont?';
+  static const logoutBody = 'Datele rămân pe telefon. Te poți autentifica din nou oricând.';
+  static const myDoctor = 'Medicul meu';
+  static const myCode = 'Codul meu pentru medic';
 
   // Live
   static const gloveConnected = 'Mănușă conectată';
   static const gloveConnecting = 'Se conectează…';
   static const gloveDisconnected = 'Mănușă deconectată';
   static const noData = 'Fără date';
-  static const simulatedBanner = 'DATE SIMULATE · mod demonstrativ';
+  static const simulatedBanner = 'Date simulate · mod demonstrativ';
   static const powerUsb = 'USB';
   static const batteryLow = 'Baterie descărcată';
   static const tremor = 'Tremor';
-  static const noTremor = 'fără tremor';
+  static const noTremor = 'nemăsurabilă';
   static const index = 'indice';
   static const last30s = 'ultimele 30 s';
   static const stateLabel = 'stare:';
@@ -24,8 +33,9 @@ abstract final class S {
   static const fingerNames = ['Mare', 'Arătător', 'Mijlociu', 'Inelar', 'Mic'];
   static const fingersNotCalibrated = 'Degetele nu sunt calibrate.';
   static const calibrateNow = 'Calibrează acum';
-  static const startSession = 'Pornește sesiunea';
-  static const connectFirst = 'Conectează mănușa ca să pornești o sesiune.';
+  static const startSession = 'Pornește o sesiune';
+  static const recordingNow = 'Înregistrare în curs';
+  static const connectFirst = 'Fără mănușă merge doar tapping-ul pe ecran.';
 
   // Sesiune
   static const recording = 'Înregistrare';
@@ -96,7 +106,8 @@ abstract final class S {
   static const dataSourceHints = [
     'Mănușă simulată, fără hardware.',
     'Mănușa legată prin USB la calculator; datele vin prin puntea de pe calculator.',
-    'Mănușa reală, fără fir.',
+    'Mănușa reală, prin Bluetooth.',
+    'Mănușa reală, prin Wi-Fi: telefonul și mănușa sunt în aceeași rețea (acasă sau hotspotul telefonului).',
   ];
   static const usbTitle = 'Mănușa prin USB';
   static const usbSteps = [
@@ -139,15 +150,17 @@ abstract final class S {
   static const testVibration = 'Test vibrație';
   static const vibrationSent = 'Comanda de vibrație a fost trimisă mănușii.';
   static const vibrationSimulated = 'Mănușa simulată nu are motor: comanda a fost doar înregistrată.';
-  static const addDemoData = 'Adaugă o săptămână de date demo';
+  static const addDemoData = 'Adaugă 3 luni de date demo';
   static const demoDataAdded = 'Am adăugat sesiuni demo în Istoric.';
   static const theme = 'Temă';
-  static const themeSystem = 'Automată';
+  static const themeSystem = 'Sistem';
   static const themeLight = 'Deschisă';
   static const themeDark = 'Întunecată';
   static const instructions = 'Instrucțiuni';
   static const about = 'Despre';
   static const notMedicalDevice = 'Nu este dispozitiv medical';
+  static const gallery = 'Galerie de piese';
+  static const galleryHint = 'doar în modul de dezvoltare';
   static const decrease = 'Scade pragul';
   static const increase = 'Crește pragul';
 

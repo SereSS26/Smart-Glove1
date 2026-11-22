@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../core/contract.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../state/providers.dart';
+import '../../ui/ui.dart';
 
 /// Calibrarea în 3 pași. Fiecare pas trimite o comandă; mănușa confirmă prin flaguri.
 /// [onDone] e folosit la prima pornire, ca să treacă la ecranul principal.
@@ -79,7 +81,7 @@ class _CalibrateScreenState extends ConsumerState<CalibrateScreen> {
                       child: Container(
                         height: 8,
                         decoration: BoxDecoration(
-                          color: i <= _step ? AppColors.accent : AppColors.borderStrong,
+                          color: i <= _step ? AppColors.accent : AppColors.track,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -94,16 +96,22 @@ class _CalibrateScreenState extends ConsumerState<CalibrateScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(
-                        done ? Icons.check_circle_rounded : _icons[_step],
-                        size: 120,
-                        color: done ? AppColors.connected : AppColors.accent,
+                      Container(
+                        width: 148,
+                        height: 148,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: done ? AppColors.okBg : AppColors.accentSoft),
+                        child: Icon(
+                          done ? Symbols.check_circle_rounded : _icons[_step],
+                          size: 84,
+                          fill: done ? 1 : 0,
+                          color: done ? AppColors.connected : AppColors.accentDark,
+                        ),
                       ),
                       const SizedBox(height: 18),
                       Text(
                         done ? S.calibrationDone : S.calibrationInstructions[_step],
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, height: 1.2),
+                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, height: 1.2),
                       ),
                       if (done) ...[
                         const SizedBox(height: 8),
@@ -136,13 +144,13 @@ class _CalibrateScreenState extends ConsumerState<CalibrateScreen> {
                 Text(
                   _error!,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.recording),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.recording),
                 ),
                 const SizedBox(height: 8),
               ],
-              FilledButton(
+              GradientButton(
+                label: done ? S.done : (_busy ? S.saving : S.calibrationButtons[_step]),
                 onPressed: _busy ? null : (done ? () => widget.onDone != null ? widget.onDone!() : Navigator.of(context).pop() : _save),
-                child: Text(done ? S.done : (_busy ? S.saving : S.calibrationButtons[_step])),
               ),
               if (!done) ...[
                 const SizedBox(height: 8),
@@ -159,7 +167,7 @@ class _CalibrateScreenState extends ConsumerState<CalibrateScreen> {
     );
   }
 
-  static const _icons = [Icons.back_hand_outlined, Icons.front_hand, Icons.pan_tool_alt_outlined];
+  static const _icons = [Symbols.back_hand_rounded, Symbols.front_hand_rounded, Symbols.pan_tool_rounded];
 }
 
 enum _Step { done, current, todo }
@@ -188,7 +196,7 @@ class _StepRow extends StatelessWidget {
               border: active ? null : Border.all(color: AppColors.mutedDot, width: 2),
             ),
             child: state == _Step.done
-                ? Icon(Icons.check, color: AppColors.onAccent, size: 20)
+                ? Icon(Symbols.check_rounded, color: AppColors.onAccent, size: 20)
                 : Text(
                     '$number',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: active ? AppColors.onAccent : AppColors.textMuted),
@@ -201,7 +209,7 @@ class _StepRow extends StatelessWidget {
           if (state == _Step.current)
             Text(
               'acum',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.accentDark),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accentDark),
             ),
         ],
       ),

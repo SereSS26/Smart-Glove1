@@ -1,0 +1,12 @@
+# Ecranul de pornire: roz, cu sigla albă. Se aplică cu: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#D6336C"
+  color_dark: "#7A1F47"
+  image: assets/brand/splash_logo.png
+  android_12:
+    color: "#D6336C"
+    color_dark: "#7A1F47"
+    image: assets/brand/splash_icon_android12.png
+  android: true
+  ios: true
+  web: false

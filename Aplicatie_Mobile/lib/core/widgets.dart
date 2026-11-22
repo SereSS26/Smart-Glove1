@@ -28,29 +28,33 @@ class FillOrScroll extends StatelessWidget {
   }
 }
 
-/// Cartonaș alb cu margine, folosit pentru fiecare bloc de pe ecran.
+/// Cartonaș alb cu colțuri de 24 și umbră moale rozalie (pe tema întunecată: margine fină).
 class AppCard extends StatelessWidget {
-  const AppCard({super.key, required this.child, this.padding = const EdgeInsets.fromLTRB(20, 18, 20, 16)});
+  const AppCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.color});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     // Material (nu Container), ca butoanele și comutatoarele din cartonaș să-și arate efectul la apăsare.
-    return Material(
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppSizes.radius),
-        side: BorderSide(color: AppColors.border),
+    return DecoratedBox(
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppSizes.radius), boxShadow: AppShadows.card),
+      child: Material(
+        color: color ?? AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radius),
+          side: BorderSide(color: AppColors.cardBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(padding: padding, child: child),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Padding(padding: padding, child: child),
     );
   }
 }
 
-/// Etichetă de secțiune cu majuscule (ex. „TREMOR”, „DEGETE”).
+/// Etichetă de secțiune cu majuscule rărite (ex. „TREMOR”, „DEGETE”).
 class SectionLabel extends StatelessWidget {
   const SectionLabel(this.text, {super.key});
 
@@ -64,27 +68,33 @@ class SectionLabel extends StatelessWidget {
 
 /// Pastila de severitate: punct colorat + cuvânt.
 class SeverityChip extends StatelessWidget {
-  const SeverityChip(this.severity, {super.key});
+  const SeverityChip(this.severity, {super.key, this.prefix});
 
   final Severity severity;
+
+  /// Text înaintea cuvântului (ex. indicele: „48 · moderat”).
+  final String? prefix;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(color: severity.background, borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(color: severity.background, borderRadius: BorderRadius.circular(999)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 10,
-            height: 10,
+            width: 9,
+            height: 9,
             decoration: BoxDecoration(color: severity.dot, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
-          Text(
-            severity.label,
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: severity.foreground),
+          Flexible(
+            child: Text(
+              prefix == null ? severity.label : '$prefix · ${severity.label}',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: severity.foreground, fontFeatures: tabular),
+            ),
           ),
         ],
       ),
@@ -94,40 +104,45 @@ class SeverityChip extends StatelessWidget {
 
 /// Antetul ecranelor secundare: buton mare de înapoi + titlu.
 class BackHeader extends StatelessWidget {
-  const BackHeader({super.key, required this.title, this.subtitle, this.trailing, this.onBack});
+  const BackHeader({super.key, required this.title, this.subtitle, this.trailing, this.onBack, this.showBack = true});
 
   final String title;
   final String? subtitle;
   final Widget? trailing;
   final VoidCallback? onBack;
 
+  /// Fără butonul înapoi (ex. detaliul din dreapta, pe tabletă).
+  final bool showBack;
+
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        SizedBox(
-          width: 56,
-          height: 56,
-          child: Material(
-            color: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
-              side: BorderSide(color: AppColors.border),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: onBack ?? () => Navigator.of(context).maybePop(),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 24, semanticLabel: 'Înapoi'),
+        if (showBack) ...[
+          SizedBox(
+            width: 52,
+            height: 52,
+            child: Material(
+              color: AppColors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: AppColors.border),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: onBack ?? () => Navigator.of(context).maybePop(),
+                child: Icon(Icons.arrow_back_rounded, size: 26, color: AppColors.text, semanticLabel: 'Înapoi'),
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 14),
+          const SizedBox(width: 14),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, height: 1.1)),
-              if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: 17, color: AppColors.textMuted)),
+              Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, height: 1.15)),
+              if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: 16, color: AppColors.textMuted)),
             ],
           ),
         ),
@@ -137,7 +152,7 @@ class BackHeader extends StatelessWidget {
   }
 }
 
-/// Buton mare cu contur, pictogramă și o explicație sub titlu.
+/// Buton mare cu contur, iconiță pe fond roz pal și o explicație sub titlu.
 class OutlineBigButton extends StatelessWidget {
   const OutlineBigButton({
     super.key,
@@ -156,12 +171,13 @@ class OutlineBigButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final enabled = onPressed != null;
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         minimumSize: const Size.fromHeight(AppSizes.buttonHeight),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        side: BorderSide(color: AppColors.borderStrong, width: 2),
+        padding: const EdgeInsets.fromLTRB(10, 8, 16, 8),
+        side: BorderSide(color: AppColors.border, width: 2),
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.text,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -169,18 +185,26 @@ class OutlineBigButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: centered ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
-          Icon(icon, color: AppColors.accent, size: 26),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: enabled ? AppColors.accentSoft : AppColors.track, borderRadius: BorderRadius.circular(13)),
+            child: Icon(icon, color: enabled ? AppColors.accentDark : AppColors.textMuted, size: 24),
+          ),
           const SizedBox(width: 14),
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: enabled ? AppColors.text : AppColors.textMuted),
+                ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.textMuted),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: AppColors.textMuted),
                   ),
               ],
             ),
@@ -191,7 +215,7 @@ class OutlineBigButton extends StatelessWidget {
   }
 }
 
-/// Bandă galbenă care arată că datele sunt simulate.
+/// Bandă care arată că datele sunt simulate.
 class SimulatedBanner extends StatelessWidget {
   const SimulatedBanner(this.text, {super.key});
 
@@ -201,16 +225,16 @@ class SimulatedBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1C7),
+        color: AppColors.warningBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE6C766)),
+        border: Border.all(color: AppColors.warningBorder),
       ),
       child: Text(
-        text,
+        text.toUpperCase(),
         textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, letterSpacing: 0.6, color: Color(0xFF5C4300)),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 0.9, color: AppColors.warningFg),
       ),
     );
   }
@@ -218,15 +242,16 @@ class SimulatedBanner extends StatelessWidget {
 
 /// Pastilă rotunjită din bara de sus (ex. starea conexiunii, alimentarea).
 class StatusPill extends StatelessWidget {
-  const StatusPill({super.key, required this.child, this.onTap});
+  const StatusPill({super.key, required this.child, this.onTap, this.color});
 
   final Widget child;
   final VoidCallback? onTap;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: color ?? AppColors.surface,
       shape: StadiumBorder(side: BorderSide(color: AppColors.border)),
       child: InkWell(
         customBorder: const StadiumBorder(),

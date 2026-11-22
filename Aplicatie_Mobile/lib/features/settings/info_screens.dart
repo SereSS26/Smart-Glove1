@@ -25,7 +25,7 @@ class _TextPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(heading, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                    Text(heading, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 6),
                     Text(body, style: const TextStyle(fontSize: 18, height: 1.4)),
                   ],
@@ -67,7 +67,7 @@ class InstructionsScreen extends StatelessWidget {
       ('3. Calibrează', 'O dată pe zi sau când pui mănușa: mână deschisă, pumn strâns, apoi mâna nemișcată 2 secunde.'),
       (
         '4. Înregistrează',
-        'În Live apasă Pornește sesiunea. Alege ce faci (repaus, postură, acțiune), adaugă o notă dacă vrei și oprește sesiunea la final.',
+        'În Live apasă Pornește o sesiune. Alege ce faci (repaus, postură, acțiune), adaugă o notă dacă vrei și oprește sesiunea la final.',
       ),
       ('5. Arată medicului', 'În Istoric deschide o sesiune și apasă Trimite raport PDF. Alegi tu cui îl trimiți.'),
       ('Alerte', 'Când tremorul stă peste prag 5 secunde, telefonul îți arată o notificare. Pragul îl schimbi din Setări.'),

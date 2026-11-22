@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 import '../../app.dart';
 import '../../core/contract.dart';
@@ -10,8 +11,8 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets.dart';
 import '../../state/providers.dart';
+import '../../ui/ui.dart';
 import '../history/session_detail_screen.dart';
-import '../live/sparkline.dart';
 
 /// Sesiunea în curs: cronometru, tremorul pe scurt, activitatea, note și oprire.
 class SessionScreen extends ConsumerStatefulWidget {
@@ -48,7 +49,11 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
             child: const Text(S.keepRecording, style: TextStyle(fontSize: 18)),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(minimumSize: const Size(120, 56), backgroundColor: AppColors.recording),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(120, 56),
+              backgroundColor: AppColors.recording,
+              foregroundColor: AppColors.isDark ? AppPalette.dark.onAccent : Colors.white,
+            ),
             onPressed: () => Navigator.pop(c, true),
             child: const Text(S.stopSession, style: TextStyle(fontSize: 18)),
           ),
@@ -72,7 +77,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
           autofocus: true,
           maxLines: 3,
           style: const TextStyle(fontSize: 19),
-          decoration: const InputDecoration(hintText: S.notePlaceholder, border: OutlineInputBorder()),
+          decoration: const InputDecoration(hintText: S.notePlaceholder),
         ),
         actions: [
           TextButton(
@@ -97,6 +102,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
     final session = ref.watch(sessionProvider);
     final live = ref.watch(liveProvider);
     final simulated = ref.watch(gloveSourceProvider.select((s) => s.isSimulated));
+    final threshold = ref.watch(settingsProvider.select((s) => s.alertThreshold));
     if (session == null) return const Scaffold();
     final p = live.stale ? null : live.packet;
     final muted = TextStyle(fontSize: 17, color: AppColors.textMuted);
@@ -126,7 +132,11 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                       iconSize: 26,
                       constraints: const BoxConstraints(minWidth: 52, minHeight: 52),
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, semanticLabel: 'Înapoi la Live, sesiunea continuă'),
+                      icon: Icon(
+                        Symbols.arrow_back_rounded,
+                        color: AppColors.recordingText,
+                        semanticLabel: 'Înapoi la Live, sesiunea continuă',
+                      ),
                     ),
                     Container(
                       width: 16,
@@ -141,7 +151,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           S.recording.toUpperCase(),
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: 1.3, color: AppColors.recordingText),
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, letterSpacing: 1.3, color: AppColors.recordingText),
                         ),
                       ),
                     ),
@@ -150,7 +160,7 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                       fit: BoxFit.scaleDown,
                       child: Text(
                         Fmt.clock(DateTime.now().difference(session.startedAt)),
-                        style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()]),
+                        style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800, fontFeatures: tabular, color: AppColors.recordingText),
                       ),
                     ),
                   ],
@@ -158,7 +168,6 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
               ),
               const SizedBox(height: 14),
               AppCard(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -170,7 +179,10 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                           textBaseline: TextBaseline.alphabetic,
                           children: [
                             if (p != null && p.hasTremor)
-                              Text(Fmt.hz(p.frequencyHz), style: const TextStyle(fontSize: 52, fontWeight: FontWeight.w700, height: 1))
+                              Text(
+                                Fmt.hz(p.frequencyHz),
+                                style: const TextStyle(fontSize: 52, fontWeight: FontWeight.w800, height: 1, fontFeatures: tabular),
+                              )
                             else
                               // Fără tremor sau fără date: o liniuță discretă, nu o cifră mare.
                               Text(
@@ -208,35 +220,31 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Sparkline(values: live.history, height: 64),
+                    TrendChart(values: live.history, threshold: threshold, height: 64),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
               const SectionLabel(S.whatAreYouDoing),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  for (final a in HandState.values) ...[
-                    if (a != HandState.values.first) const SizedBox(width: 10),
-                    Expanded(
-                      child: _ActivityButton(activity: a, selected: session.activity == a),
-                    ),
-                  ],
-                ],
+              ChoiceTiles<HandState>(
+                height: 64,
+                options: [for (final a in HandState.values) Choice(a, a.label[0].toUpperCase() + a.label.substring(1))],
+                selected: session.activity,
+                onChanged: (a) => ref.read(sessionProvider.notifier).setActivity(a),
               ),
               const SizedBox(height: 8),
               Text(S.activityHints[session.activity.code], style: TextStyle(fontSize: 16, color: AppColors.textMuted)),
               const SizedBox(height: 14),
               OutlineBigButton(
-                icon: Icons.add,
+                icon: Symbols.edit_note_rounded,
                 title: session.notes.isEmpty ? S.addNote : '${S.addNote} (${session.notes.length})',
                 subtitle: S.addNoteHint,
                 onPressed: _addNote,
               ),
               const SizedBox(height: 10),
               OutlineBigButton(
-                icon: Icons.flag_outlined,
+                icon: Symbols.flag_rounded,
                 title: session.marks == 0 ? S.markMoment : '${S.markMoment} (${session.marks})',
                 subtitle: S.markMomentHint,
                 onPressed: () async {
@@ -245,43 +253,10 @@ class _SessionScreenState extends ConsumerState<SessionScreen> {
                 },
               ),
               const Spacer(),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(backgroundColor: AppColors.recording, minimumSize: const Size.fromHeight(72)),
-                onPressed: _stop,
-                icon: const Icon(Icons.stop_rounded, size: 30),
-                label: const Text(S.stopSession),
-              ),
+              GradientButton(label: S.stopSession, icon: Symbols.stop_rounded, danger: true, height: 68, onPressed: _stop),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ActivityButton extends ConsumerWidget {
-  const _ActivityButton({required this.activity, required this.selected});
-
-  final HandState activity;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final label = activity.label[0].toUpperCase() + activity.label.substring(1);
-    return Semantics(
-      selected: selected,
-      button: true,
-      child: OutlinedButton(
-        onPressed: () => ref.read(sessionProvider.notifier).setActivity(activity),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(68),
-          padding: EdgeInsets.zero,
-          backgroundColor: selected ? AppColors.accentSoft : AppColors.surface,
-          foregroundColor: selected ? AppColors.accentDark : AppColors.text,
-          side: BorderSide(color: selected ? AppColors.accent : AppColors.borderStrong, width: 2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        ),
-        child: Text(label, style: TextStyle(fontSize: 19, fontWeight: selected ? FontWeight.w700 : FontWeight.w400)),
       ),
     );
   }
